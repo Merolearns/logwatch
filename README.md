@@ -35,6 +35,7 @@ python logwatch.py access.log --json                # JSON output instead
 - requests per hour, drawn as an ASCII bar chart (no plotting library)
 - suspicious flags:
   - IPs returning 50+ 404s (looks like directory scanning)
+  - IPs firing 500+ requests inside any 60-second window (sliding window, so a burst straddling a minute boundary still flags), even when every request succeeds
   - requests matching naive attack signatures (`UNION SELECT`, `../`, `<script>`)
   - user agents seen exactly once (usually one-off bots or scripts)
 

@@ -1,6 +1,7 @@
 """Tests for the aggregation / flagging logic, using the sample log."""
 
 import os
+from datetime import datetime, timezone
 from urllib.parse import unquote
 
 from analyze import analyze, render_text
@@ -68,6 +69,41 @@ def test_rare_agents():
     assert any("UptimeRobot" in a for a in agents)
     # the scanner's UA is reused, so it must NOT be rare
     assert not any("masscan" in a for a in agents)
+
+
+def _burst_entries(ip, seconds, count):
+    """Synthetic all-200 entries for one IP at the given second offsets."""
+    base = datetime(2026, 10, 3, 13, 0, 0, tzinfo=timezone.utc)
+    from datetime import timedelta
+    return [
+        {"ip": ip, "time": base + timedelta(seconds=s), "status": 200,
+         "path": "/", "agent": "curl/8.5.0"}
+        for s in seconds for _ in range(count)
+    ]
+
+
+def test_high_rate_ip_flagged_without_404s():
+    # 600 successful requests inside one minute: flagged on rate alone.
+    entries = _burst_entries("198.51.100.99", [0], 600)
+    scanners = analyze(entries)["scanners"]
+    assert len(scanners) == 1
+    assert scanners[0]["ip"] == "198.51.100.99"
+    assert scanners[0]["requests_404"] == 0
+    assert scanners[0]["peak_requests_per_min"] == 600
+
+
+def test_burst_across_minute_boundary_flagged():
+    # 300 requests at 13:00:59 and 300 at 13:01:00: a clock-minute
+    # bucket count would miss this, the sliding window catches it.
+    entries = _burst_entries("198.51.100.98", [59, 60], 300)
+    scanners = analyze(entries)["scanners"]
+    assert len(scanners) == 1
+    assert scanners[0]["peak_requests_per_min"] == 600
+
+
+def test_just_under_rate_threshold_not_flagged():
+    entries = _burst_entries("198.51.100.97", [0], 499)
+    assert analyze(entries)["scanners"] == []
 
 
 def test_text_report_mentions_flags():

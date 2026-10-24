@@ -2,10 +2,16 @@
 
 import re
 from collections import Counter
+from datetime import timedelta
 from urllib.parse import unquote
 
 # An IP returning this many 404s in one file is almost certainly scanning.
 SCANNER_404_THRESHOLD = 50
+
+# An IP firing this many requests inside any 60-second window is bursting,
+# even if every request succeeds, so it gets flagged on rate alone.
+HIGH_RATE_THRESHOLD = 500
+RATE_WINDOW_SECONDS = 60
 
 # Deliberately naive signatures. Anything matching gets flagged for a human
 # to look at; this is a first pass, not a WAF.
@@ -51,16 +57,49 @@ def _requests_per_hour(entries):
     ]
 
 
+def _peak_requests_per_min(times):
+    """Most requests in any RATE_WINDOW_SECONDS window (sliding, not
+    clock-minute buckets, so a burst straddling a minute boundary still
+    counts). Timestamps carry second precision, so this is exact."""
+    ordered = sorted(times)
+    window = timedelta(seconds=RATE_WINDOW_SECONDS)
+    peak = 0
+    start = 0
+    for end, t in enumerate(ordered):
+        while ordered[start] < t - window:
+            start += 1
+        peak = max(peak, end - start + 1)
+    return peak
+
+
 def _find_scanners(entries):
-    """IPs with a suspicious number of 404s. TODO: also flag high request
-    rates (e.g. >500 req/min) once entries carry sub-minute precision."""
+    """IPs with a suspicious number of 404s, or a suspicious request rate.
+
+    An IP is flagged when it hits SCANNER_404_THRESHOLD 404s or fires
+    HIGH_RATE_THRESHOLD requests inside any 60-second window. The two
+    signals are independent: a fast IP returning all 200s still flags.
+    """
     not_found = Counter(e["ip"] for e in entries if e["status"] == 404)
     total = Counter(e["ip"] for e in entries)
-    return [
-        {"ip": ip, "requests_404": count, "total_requests": total[ip]}
-        for ip, count in not_found.most_common()
-        if count >= SCANNER_404_THRESHOLD
+    times = {}
+    for e in entries:
+        times.setdefault(e["ip"], []).append(e["time"])
+    peak = {ip: _peak_requests_per_min(ts) for ip, ts in times.items()}
+    flagged = [
+        {
+            "ip": ip,
+            "requests_404": not_found[ip],
+            "total_requests": total[ip],
+            "peak_requests_per_min": peak[ip],
+        }
+        for ip in total
+        if not_found[ip] >= SCANNER_404_THRESHOLD
+        or peak[ip] >= HIGH_RATE_THRESHOLD
     ]
+    # 404-heavy IPs first, then the fastest burst.
+    flagged.sort(key=lambda s: (s["requests_404"], s["peak_requests_per_min"]),
+                 reverse=True)
+    return flagged
 
 
 def _find_probes(entries):
@@ -143,8 +182,12 @@ def render_text(report, skipped=0, top_n=10):
     scanners = report["scanners"]
     if scanners:
         for s in scanners:
-            add(f"  [!] {s['ip']} returned {s['requests_404']} 404s "
-                f"({s['total_requests']} requests total) - possible scan")
+            line = (f"  [!] {s['ip']} returned {s['requests_404']} 404s "
+                    f"({s['total_requests']} requests total) - possible scan")
+            if s["peak_requests_per_min"] >= HIGH_RATE_THRESHOLD:
+                line += (f" - burst: {s['peak_requests_per_min']} requests "
+                         f"in a single minute")
+            add(line)
     else:
         add("  no scanner-like IPs found")
 
