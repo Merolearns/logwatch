@@ -5,6 +5,7 @@ Usage:
     python logwatch.py access.log
     python logwatch.py access.log --top 5
     python logwatch.py access.log --json
+    zcat access.log.gz | python logwatch.py -
 """
 
 import argparse
@@ -12,7 +13,7 @@ import json
 import sys
 
 from analyze import analyze, render_text
-from parser import parse_file
+from parser import parse_file, parse_stream
 
 
 def build_parser():
@@ -20,7 +21,8 @@ def build_parser():
         prog="logwatch",
         description="Analyze an Apache/Nginx combined-format access log.",
     )
-    p.add_argument("logfile", help="path to the access log file")
+    p.add_argument("logfile",
+                   help="path to the access log file, or '-' to read from stdin")
     p.add_argument("--top", type=int, default=10,
                    help="how many rows to show in the top-IP / top-path lists (default 10)")
     p.add_argument("--json", action="store_true",
@@ -31,11 +33,14 @@ def build_parser():
 def main(argv=None):
     args = build_parser().parse_args(argv)
 
-    try:
-        entries, skipped = parse_file(args.logfile)
-    except OSError as e:
-        print(f"logwatch: cannot read {args.logfile}: {e}", file=sys.stderr)
-        return 1
+    if args.logfile == "-":
+        entries, skipped = parse_stream(sys.stdin)
+    else:
+        try:
+            entries, skipped = parse_file(args.logfile)
+        except OSError as e:
+            print(f"logwatch: cannot read {args.logfile}: {e}", file=sys.stderr)
+            return 1
 
     report = analyze(entries, top_n=args.top)
 

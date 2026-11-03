@@ -54,3 +54,14 @@ def test_sample_log_parses_with_skip_count():
     ips = {e["ip"] for e in entries}
     assert "45.148.10.88" in ips  # the scanner
     assert "203.0.113.21" in ips
+
+
+def test_parse_stream_reads_from_text_stream():
+    import io
+    from parser import parse_stream
+
+    stream = io.StringIO(GOOD_LINE + "\nnot a log line\n\n")
+    entries, skipped = parse_stream(stream)
+    assert len(entries) == 1
+    assert entries[0]["ip"] == "203.0.113.21"
+    assert skipped == 1  # blank line is ignored, garbage line is skipped

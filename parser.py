@@ -41,22 +41,31 @@ def parse_line(line):
     return entry
 
 
-def parse_file(path):
-    """Parse every line of a log file.
+def parse_stream(stream):
+    """Parse log lines from an already-open text stream (e.g. sys.stdin).
 
     Returns (entries, skipped): parsed entry dicts and the count of
     malformed/blank lines that were skipped.
     """
     entries = []
     skipped = 0
-    with open(path, encoding="utf-8", errors="replace") as f:
-        for line in f:
-            line = line.rstrip("\n")
-            if not line.strip():
-                continue
-            entry = parse_line(line)
-            if entry is None:
-                skipped += 1
-            else:
-                entries.append(entry)
+    for line in stream:
+        line = line.rstrip("\n")
+        if not line.strip():
+            continue
+        entry = parse_line(line)
+        if entry is None:
+            skipped += 1
+        else:
+            entries.append(entry)
     return entries, skipped
+
+
+def parse_file(path):
+    """Parse every line of a log file.
+
+    Returns (entries, skipped): parsed entry dicts and the count of
+    malformed/blank lines that were skipped.
+    """
+    with open(path, encoding="utf-8", errors="replace") as f:
+        return parse_stream(f)
