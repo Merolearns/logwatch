@@ -25,6 +25,7 @@ python logwatch.py tests/access.log.sample          # text report
 python logwatch.py /var/log/nginx/access.log        # your own log
 python logwatch.py access.log --top 5               # shorter top-N lists
 python logwatch.py access.log --json                # JSON output instead
+python logwatch.py access.log --html > report.html  # self-contained HTML report
 ```
 
 ## What it reports

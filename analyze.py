@@ -1,5 +1,6 @@
 """Aggregation and flagging logic for parsed access-log entries."""
 
+import html
 import re
 from collections import Counter
 from datetime import timedelta
@@ -209,3 +210,106 @@ def render_text(report, skipped=0, top_n=10):
         add("  no one-off user agents")
 
     return "\n".join(out)
+
+
+def render_html(report, skipped=0, top_n=10):
+    """Render the report dict as a self-contained HTML page.
+
+    Same data as render_text, as one file you can open in a browser or
+    send to someone -- no external assets, just inline CSS. Everything
+    interpolated into the page is escaped: log paths and user agents can
+    contain arbitrary text, including markup.
+    """
+    esc = html.escape
+
+    def bar(pct):
+        return (f'<div class="bar"><div style="width:{pct:.1f}%">'
+                f"</div></div>")
+
+    parts = []
+    add = parts.append
+    add("<!DOCTYPE html>")
+    add('<html lang="en"><head><meta charset="utf-8">')
+    add("<title>logwatch report</title>")
+    add("<style>")
+    add("body{font-family:system-ui,sans-serif;max-width:900px;margin:2em "
+        "auto;padding:0 1em;color:#222}")
+    add("h1{font-size:1.4em}h2{font-size:1.1em;border-bottom:1px solid "
+        "#ccc;padding-bottom:.2em}")
+    add("table{border-collapse:collapse}td,th{padding:.2em .8em .2em 0;"
+        "text-align:left;vertical-align:top}")
+    add(".bar{background:#eee;height:1em;width:300px;display:inline-block;"
+        "vertical-align:middle}.bar>div{background:#4477aa;height:100%}")
+    add(".flag{color:#a00}.muted{color:#666}")
+    add("</style></head><body>")
+    add("<h1>logwatch report</h1>")
+
+    add("<h2>traffic</h2>")
+    add(f"<p>total requests: {report['total_requests']}<br>")
+    add(f"unique IPs: {report['unique_ips']}<br>")
+    add(f"skipped lines: {skipped}</p>")
+
+    add("<h2>status codes</h2>")
+    total = report["total_requests"] or 1
+    add("<table>")
+    for row in report["status_codes"]:
+        pct = row["count"] / total * 100
+        add(f"<tr><td>{row['code']}</td><td>{row['count']}</td>"
+            f"<td>{bar(pct)}</td><td>{pct:.1f}%</td></tr>")
+    add("</table>")
+
+    add(f"<h2>top {top_n} IPs</h2><table>")
+    for row in report["top_ips"]:
+        add(f"<tr><td>{esc(row['ip'])}</td><td>{row['count']}</td></tr>")
+    add("</table>")
+
+    add(f"<h2>top {top_n} paths</h2><table>")
+    for row in report["top_paths"]:
+        add(f"<tr><td>{row['count']}</td><td>{esc(row['path'])}</td></tr>")
+    add("</table>")
+
+    add("<h2>requests per hour</h2><table>")
+    hourly = report["requests_per_hour"]
+    peak = max((h["count"] for h in hourly), default=0) or 1
+    for h in hourly:
+        add(f"<tr><td>{esc(h['hour'])}</td><td>{bar(h['count'] / peak * 100)}"
+            f"</td><td>{h['count']}</td></tr>")
+    add("</table>")
+
+    add("<h2>suspicious</h2>")
+    scanners = report["scanners"]
+    if scanners:
+        add("<ul>")
+        for s in scanners:
+            line = (f"{esc(s['ip'])} returned {s['requests_404']} 404s "
+                    f"({s['total_requests']} requests total) -- possible scan")
+            if s["peak_requests_per_min"] >= HIGH_RATE_THRESHOLD:
+                line += (f" -- burst: {s['peak_requests_per_min']} requests "
+                         f"in a single minute")
+            add(f'<li class="flag">{line}</li>')
+        add("</ul>")
+    else:
+        add('<p class="muted">no scanner-like IPs found</p>')
+
+    probes = report["probes"]
+    if probes:
+        add("<ul>")
+        for p in probes:
+            add(f'<li class="flag">line {p["line"]}: {esc(p["ip"])} requested '
+                f"{esc(p['path'])} (status {p['status']}) -- possible attack "
+                f"probe</li>")
+        add("</ul>")
+    else:
+        add('<p class="muted">no attack-probe patterns found</p>')
+
+    rare = report["rare_agents"]
+    if rare:
+        add("<p>user agents seen once:</p><ul>")
+        for r in rare:
+            add(f"<li>{esc(r['agent'])} ({esc(r['ip'])})</li>")
+        add("</ul>")
+    else:
+        add('<p class="muted">no one-off user agents</p>')
+
+    add("</body></html>")
+    return "\n".join(parts)

@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timezone
 from urllib.parse import unquote
 
-from analyze import analyze, render_text
+from analyze import analyze, render_html, render_text
 from parser import parse_file
 
 SAMPLE = os.path.join(os.path.dirname(__file__), "access.log.sample")
@@ -112,3 +112,37 @@ def test_text_report_mentions_flags():
     assert "possible scan" in text
     assert "possible attack probe" in text
     assert "skipped lines  : 2" in text
+
+
+def test_html_report_has_same_sections():
+    html = render_html(report, skipped=2, top_n=10)
+    assert "<!DOCTYPE html>" in html
+    assert "45.148.10.88" in html
+    assert "possible scan" in html
+    assert "possible attack probe" in html
+    assert "skipped lines: 2" in html
+    assert "requests per hour" in html
+
+
+def test_html_report_escapes_log_content():
+    # paths and user agents come straight from the log -- markup in them
+    # must be escaped, not rendered as live HTML
+    nasty = {
+        "total_requests": 1,
+        "unique_ips": 1,
+        "status_codes": [{"code": 200, "count": 1}],
+        "top_ips": [{"ip": "203.0.113.1", "count": 1}],
+        "top_paths": [{"path": "/<script>alert(1)</script>", "count": 1}],
+        "requests_per_hour": [{"hour": "13:00", "count": 1}],
+        "scanners": [],
+        "probes": [{
+            "line": 1, "ip": "203.0.113.1",
+            "path": "/<script>alert(1)</script>", "status": 200,
+        }],
+        "rare_agents": [{"agent": "<b>evil</b>", "ip": "203.0.113.1"}],
+    }
+    html = render_html(nasty)
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+    assert "&lt;b&gt;evil&lt;/b&gt;" in html
+    assert "<script>alert(1)</script>" not in html
+    assert "<b>evil</b>" not in html

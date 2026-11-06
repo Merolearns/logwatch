@@ -5,6 +5,7 @@ Usage:
     python logwatch.py access.log
     python logwatch.py access.log --top 5
     python logwatch.py access.log --json
+    python logwatch.py access.log --html > report.html
     zcat access.log.gz | python logwatch.py -
 """
 
@@ -12,7 +13,7 @@ import argparse
 import json
 import sys
 
-from analyze import analyze, render_text
+from analyze import analyze, render_html, render_text
 from parser import parse_file, parse_stream
 
 
@@ -25,8 +26,12 @@ def build_parser():
                    help="path to the access log file, or '-' to read from stdin")
     p.add_argument("--top", type=int, default=10,
                    help="how many rows to show in the top-IP / top-path lists (default 10)")
-    p.add_argument("--json", action="store_true",
-                   help="print the report as JSON instead of text")
+    group = p.add_mutually_exclusive_group()
+    group.add_argument("--json", action="store_true",
+                       help="print the report as JSON instead of text")
+    group.add_argument("--html", action="store_true",
+                       help="print the report as a self-contained HTML page "
+                            "instead of text (redirect to a .html file)")
     return p
 
 
@@ -44,7 +49,9 @@ def main(argv=None):
 
     report = analyze(entries, top_n=args.top)
 
-    if args.json:
+    if args.html:
+        print(render_html(report, skipped=skipped, top_n=args.top))
+    elif args.json:
         report["skipped_lines"] = skipped
         print(json.dumps(report, indent=2))
     else:
