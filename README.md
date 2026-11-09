@@ -18,6 +18,31 @@ pip install -r requirements.txt   # pytest, for the test suite only
 
 No third-party dependencies at runtime — just the standard library.
 
+## Web UI
+
+The same parser and analyzer behind a web page — upload a log file or
+paste log lines and see the report in the browser, with the same
+traffic stats, status-code bars, top IPs/paths, hourly chart, and
+suspicious flags as the CLI.
+
+```bash
+pip install -r requirements.txt   # adds Flask
+python app.py
+```
+
+Open http://127.0.0.1:5000. Upload a `.log` file (up to 5 MB), paste log
+lines, or click "Try the sample log". The form has a top-N control
+(default 10) for the top-IP and top-path lists. After a report, you can
+download it as a self-contained `report.html` or as `report.json`.
+Uploaded logs stay in memory only — nothing is written to disk.
+
+The bundled sample (`tests/access.log.sample`, 90 lines) reports 88
+requests from 10 unique IPs, with 2 malformed lines skipped. It flags
+one scanner — `45.148.10.88` returned 56 404s — and three attack
+probes: a `UNION SELECT` injection attempt, a `../` path traversal
+aimed at `/etc/passwd`, and a `<script>` injection, all on line 24–26
+of the file.
+
 ## Usage
 
 ```bash
