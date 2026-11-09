@@ -1,0 +1,206 @@
+/* logwatch — quiet server-ops console look.
+   Light background, dark ink, one restrained steel-blue accent for bars
+   and links, monospace for IPs / paths / log lines. Red is used only
+   for suspicious flags. Adapted from the expense-tracker house style. */
+
+:root {
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --line: #e2e8f0;
+  --accent: #2f5d8a;
+  --accent-dark: #244a6e;
+  --accent-soft: #eef3f8;
+  --red: #b91c1c;
+  --red-soft: #fef2f2;
+  --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+.page { max-width: 1080px; margin: 0 auto; padding: 40px 24px 80px; }
+
+/* ---------- header ---------- */
+
+header { margin-bottom: 28px; }
+header h1 { font-size: 2.2rem; margin: 0 0 8px; letter-spacing: -0.02em; }
+.subtitle { color: var(--muted); font-size: 1.02rem; max-width: 640px; margin: 0; line-height: 1.6; }
+header nav { margin-top: 14px; }
+header nav a { color: var(--accent-dark); font-weight: 600; text-decoration: none; font-size: 0.92rem; }
+header nav a:hover { text-decoration: underline; }
+.nav-sep { color: var(--muted); margin: 0 6px; }
+
+/* ---------- cards & alerts ---------- */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 28px 32px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  margin-bottom: 24px;
+}
+.section-title { font-size: 1.15rem; margin: 0 0 16px; }
+
+.alert {
+  border-radius: 12px;
+  padding: 12px 18px;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.alert-error { background: var(--red-soft); border: 1px solid #fecaca; color: #991b1b; }
+
+.empty {
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0;
+}
+.empty a { color: var(--accent-dark); font-weight: 600; }
+
+/* ---------- two-column layout ---------- */
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.two-col .card { margin-bottom: 24px; }
+
+/* ---------- stat cards ---------- */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px 22px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+.stat-value { display: block; font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em; }
+.stat-label { display: block; color: var(--muted); font-size: 0.88rem; margin-top: 4px; }
+.stat-sub { display: block; color: var(--muted); font-size: 0.82rem; margin-top: 2px; }
+
+/* ---------- bars ---------- */
+
+.bar-row { margin-bottom: 14px; }
+.bar-row:last-child { margin-bottom: 0; }
+.bar-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.92rem;
+  margin-bottom: 6px;
+}
+.bar-head .bar-total { font-weight: 700; }
+.bar-track {
+  height: 10px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  min-width: 2px;
+}
+
+/* ---------- tables ---------- */
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { background: #f1f5f9; font-weight: 700; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: #f8fafc; }
+td.amount, th.amount { text-align: right; font-variant-numeric: tabular-nums; }
+td.path-cell { white-space: normal; word-break: break-all; }
+
+/* ---------- monospace / log content ---------- */
+
+.mono { font-family: var(--mono); font-size: 0.88em; }
+code { font-family: var(--mono); font-size: 0.88em; background: #f1f5f9; padding: 1px 5px; border-radius: 5px; }
+
+/* ---------- suspicious flags ---------- */
+
+.flag-heading { font-size: 1rem; margin: 20px 0 10px; }
+.flag-heading:first-of-type { margin-top: 0; }
+.flags { margin: 0 0 8px; padding-left: 20px; line-height: 1.7; }
+.flags li { margin-bottom: 6px; }
+.flags li.flag { color: var(--red); }
+.flags li.flag .mono { color: var(--red); }
+.muted-flags li { color: var(--ink); }
+.muted { color: var(--muted); }
+
+/* ---------- forms ---------- */
+
+.field { margin-bottom: 18px; }
+.field label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; }
+.field input[type="file"] { font-size: 0.9rem; }
+.field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: 0.85rem var(--mono);
+  resize: vertical;
+  line-height: 1.5;
+}
+.field textarea:focus { outline: 2px solid #b8cfe4; border-color: var(--accent); }
+.field-inline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.field-inline label { margin-bottom: 0; }
+.field-inline input[type="number"] {
+  width: 72px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: 0.95rem inherit;
+}
+.field-hint { color: var(--muted); font-size: 0.85rem; margin: 6px 0 0; line-height: 1.5; }
+.form-actions { display: flex; gap: 12px; align-items: center; margin-top: 20px; flex-wrap: wrap; }
+.form-note { color: var(--muted); font-size: 0.85rem; }
+
+.btn {
+  display: inline-block;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 22px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-dark); }
+.btn-ghost { background: #f1f5f9; color: var(--ink); border: 1px solid var(--line); }
+.btn-ghost:hover { background: #e2e8f0; }
+
+/* ---------- misc ---------- */
+
+.checks { margin: 0; padding-left: 20px; line-height: 1.7; }
+.checks li { margin-bottom: 8px; }
+.io-hint { color: var(--muted); font-size: 0.88rem; line-height: 1.5; margin: 16px 0 0; }
+.io-hint a { color: var(--accent-dark); font-weight: 600; }
+
+@media (max-width: 900px) {
+  .stat-grid { grid-template-columns: 1fr 1fr; }
+  .two-col { grid-template-columns: 1fr; }
+  .card { padding: 22px 20px; }
+}
+@media (max-width: 560px) {
+  .stat-grid { grid-template-columns: 1fr; }
+}

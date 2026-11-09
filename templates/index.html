@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>logwatch — web server access log report</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>logwatch</h1>
+    <p class="subtitle">Paste or upload a web server access log (Apache/Nginx
+      combined format) and get a traffic + security report: request totals,
+      status codes, top IPs and paths, an hourly chart, and flags for
+      scanners, attack probes, and one-off user agents. Nothing is stored
+      &mdash; the log is analyzed in memory and forgotten.</p>
+    <nav><a href="{{ url_for('sample') }}">Try the sample log &rarr;</a></nav>
+  </header>
+
+  {% if error %}
+  <div class="alert alert-error">{{ error }}</div>
+  {% endif %}
+
+  <section class="card">
+    <h2 class="section-title">Analyze a log</h2>
+    <form action="{{ url_for('analyze_log') }}" method="post" enctype="multipart/form-data">
+      <div class="field">
+        <label for="logfile">Upload a log file</label>
+        <input type="file" id="logfile" name="logfile" accept=".log,text/plain">
+        <p class="field-hint">Up to 5 MB. When both a file and pasted text are given, the file wins.</p>
+      </div>
+      <div class="field">
+        <label for="logtext">Or paste log lines</label>
+        <textarea id="logtext" name="logtext" rows="10" spellcheck="false" placeholder='203.0.113.21 - - [03/Oct/2026:13:02:11 +0000] "GET / HTTP/1.1" 200 4523 "-" "Mozilla/5.0 ..."'></textarea>
+      </div>
+      <div class="field field-inline">
+        <label for="top">Top lists show</label>
+        <input type="number" id="top" name="top" value="10" min="1" max="50">
+        <span class="field-hint">rows (1&ndash;50) in the top-IP and top-path lists.</span>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Analyze log</button>
+        <a class="btn btn-ghost" href="{{ url_for('sample') }}">Try the sample log</a>
+      </div>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">What it checks</h2>
+    <ul class="checks">
+      <li><strong>Traffic</strong> &mdash; total requests, unique IPs, status code breakdown, busiest paths and busiest hours.</li>
+      <li><strong>Scanners</strong> &mdash; an IP returning 50+ 404s, or firing 500+ requests inside any 60-second window.</li>
+      <li><strong>Attack probes</strong> &mdash; requests matching naive signatures (<code>UNION SELECT</code>, <code>../</code>, <code>&lt;script&gt;</code>), flagged for a human to review.</li>
+      <li><strong>One-off user agents</strong> &mdash; agents seen exactly once, usually bots or one-off scripts.</li>
+    </ul>
+    <p class="io-hint">Lines that don't look like combined-format entries are counted as
+      skipped, not silently dropped. The sample log is 90 lines of hand-written
+      traffic with a scanner and three attack probes baked in.</p>
+  </section>
+</div>
+</body>
+</html>

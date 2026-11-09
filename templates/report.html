@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>logwatch report — {{ report.total_requests }} requests</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>logwatch report</h1>
+    <p class="subtitle">Traffic and security summary for the log you just analyzed.</p>
+    <nav>
+      <a href="{{ url_for('index') }}">&larr; Analyze another log</a>
+      <span class="nav-sep">&middot;</span>
+      <a href="{{ url_for('report_html') }}">Download report.html</a>
+      <span class="nav-sep">&middot;</span>
+      <a href="{{ url_for('report_json') }}">Download report.json</a>
+    </nav>
+  </header>
+
+  <section class="stat-grid">
+    <div class="stat-card">
+      <span class="stat-value">{{ report.total_requests }}</span>
+      <span class="stat-label">Total requests</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value">{{ report.unique_ips }}</span>
+      <span class="stat-label">Unique IPs</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value">{{ skipped }}</span>
+      <span class="stat-label">Skipped line{{ "s" if skipped != 1 else "" }}</span>
+      <span class="stat-sub">Malformed lines, not counted</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value">{{ report.scanners|length + report.probes|length }}</span>
+      <span class="stat-label">Suspicious flag{{ "s" if report.scanners|length + report.probes|length != 1 else "" }}</span>
+      <span class="stat-sub">Scanners + attack probes</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">Status codes</h2>
+    {% if status_rows %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Code</th><th class="amount">Requests</th><th style="width: 55%;">Share</th><th class="amount">Percent</th></tr>
+        </thead>
+        <tbody>
+          {% for row in status_rows %}
+          <tr>
+            <td class="mono">{{ row.code }}</td>
+            <td class="amount">{{ row.count }}</td>
+            <td><div class="bar-track"><div class="bar-fill" style="width: {{ '%.1f'|format(row.pct) }}%"></div></div></td>
+            <td class="amount">{{ "%.1f"|format(row.pct) }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="empty">No status codes in this report.</p>
+    {% endif %}
+  </section>
+
+  <div class="two-col">
+    <section class="card">
+      <h2 class="section-title">Top {{ top_n }} IPs</h2>
+      {% if report.top_ips %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>IP</th><th class="amount">Requests</th></tr>
+          </thead>
+          <tbody>
+            {% for row in report.top_ips %}
+            <tr>
+              <td class="mono">{{ row.ip }}</td>
+              <td class="amount">{{ row.count }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="empty">No IPs in this report.</p>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">Top {{ top_n }} paths</h2>
+      {% if report.top_paths %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Path</th><th class="amount">Requests</th></tr>
+          </thead>
+          <tbody>
+            {% for row in report.top_paths %}
+            <tr>
+              <td class="mono path-cell">{{ row.path }}</td>
+              <td class="amount">{{ row.count }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="empty">No paths in this report.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <section class="card">
+    <h2 class="section-title">Requests per hour</h2>
+    {% if hourly %}
+    {% for h in hourly %}
+    <div class="bar-row">
+      <div class="bar-head">
+        <span class="mono">{{ h.hour }}</span>
+        <span class="bar-total">{{ h.count }}</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width: {{ '%.1f'|format(h.pct) }}%"></div>
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p class="empty">No hourly data in this report.</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">Suspicious</h2>
+    {% if report.scanners %}
+    <h3 class="flag-heading">Possible scanners</h3>
+    <ul class="flags">
+      {% for s in report.scanners %}
+      <li class="flag">
+        <span class="mono">{{ s.ip }}</span> returned {{ s.requests_404 }} 404s
+        ({{ s.total_requests }} requests total) &mdash; possible scan
+        {% if s.peak_requests_per_min >= 500 %}
+        &mdash; burst: {{ s.peak_requests_per_min }} requests in a single minute
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if report.probes %}
+    <h3 class="flag-heading">Possible attack probes</h3>
+    <ul class="flags">
+      {% for p in report.probes %}
+      <li class="flag">
+        line {{ p.line }}: <span class="mono">{{ p.ip }}</span> requested
+        <span class="mono">{{ p.path }}</span> (status {{ p.status }}) &mdash; possible attack probe
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if report.rare_agents %}
+    <h3 class="flag-heading">User agents seen once</h3>
+    <ul class="flags muted-flags">
+      {% for r in report.rare_agents %}
+      <li><span class="mono">{{ r.agent }}</span> <span class="muted">({{ r.ip }})</span></li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if not report.scanners and not report.probes and not report.rare_agents %}
+    <p class="empty">Nothing flagged &mdash; no scanner-like IPs, no attack-probe patterns, and no one-off user agents in this log.</p>
+    {% endif %}
+    <p class="io-hint">Flags are a first pass for a human to review, not a verdict &mdash; the signatures are deliberately naive.</p>
+  </section>
+</div>
+</body>
+</html>
