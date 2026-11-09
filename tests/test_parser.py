@@ -47,6 +47,13 @@ def test_bad_timestamp_is_malformed():
     assert parse_line(line) is None
 
 
+def test_non_numeric_size_is_malformed():
+    # a line that matches the regex but has junk where the byte count goes
+    # used to crash with ValueError; now the line is skipped like any other
+    line = GOOD_LINE.replace("6210", "abc")
+    assert parse_line(line) is None
+
+
 def test_sample_log_parses_with_skip_count():
     entries, skipped = parse_file(SAMPLE)
     assert skipped == 2  # the two garbage lines

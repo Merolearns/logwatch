@@ -37,7 +37,10 @@ def parse_line(line):
         return None  # timestamp didn't parse, treat as malformed
 
     entry["status"] = int(entry["status"])
-    entry["size"] = 0 if entry["size"] == "-" else int(entry["size"])
+    try:
+        entry["size"] = 0 if entry["size"] == "-" else int(entry["size"])
+    except ValueError:
+        return None  # size isn't a number or '-', treat as malformed
     return entry
 
 
