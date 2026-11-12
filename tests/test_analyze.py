@@ -146,3 +146,33 @@ def test_html_report_escapes_log_content():
     assert "&lt;b&gt;evil&lt;/b&gt;" in html
     assert "<script>alert(1)</script>" not in html
     assert "<b>evil</b>" not in html
+
+
+def _entry(path, ip="1.2.3.4"):
+    return {
+        "ip": ip,
+        "time": datetime(2026, 11, 12, 10, 0, 0, tzinfo=timezone.utc),
+        "method": "GET",
+        "path": path,
+        "status": 200,
+        "size": 100,
+        "agent": "test-agent",
+    }
+
+
+def test_double_encoded_traversal_flagged_as_probe():
+    # %252e decodes once to %2e, only a second pass reveals ../
+    entries = [_entry("/%252e%252e%252fetc%252fpasswd")]
+    probes = analyze(entries)["probes"]
+    assert len(probes) == 1
+    assert probes[0]["path"] == "/%252e%252e%252fetc%252fpasswd"
+
+
+def test_single_encoded_traversal_still_flagged():
+    entries = [_entry("/%2e%2e/%2e%2e/etc/passwd")]
+    assert len(analyze(entries)["probes"]) == 1
+
+
+def test_plain_path_not_flagged():
+    entries = [_entry("/about")]
+    assert analyze(entries)["probes"] == []

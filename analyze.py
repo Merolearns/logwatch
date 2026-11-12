@@ -103,11 +103,26 @@ def _find_scanners(entries):
     return flagged
 
 
+def _fully_decode(path):
+    """URL-decode until the result stops changing (capped at 3 passes).
+
+    A single unquote misses double-encoded attacks like
+    %252e%252e%252f, which decodes to %2e%2e%2f and only then to ../.
+    """
+    decoded = path
+    for _ in range(3):
+        nxt = unquote(decoded)
+        if nxt == decoded:
+            return decoded
+        decoded = nxt
+    return decoded
+
+
 def _find_probes(entries):
     """Requests whose (URL-decoded) path matches a naive attack signature."""
     probes = []
     for i, entry in enumerate(entries, start=1):
-        decoded = unquote(entry["path"])
+        decoded = _fully_decode(entry["path"])
         if any(p.search(decoded) for p in PROBE_PATTERNS):
             probes.append({
                 "line": i,
