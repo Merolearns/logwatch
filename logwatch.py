@@ -36,7 +36,14 @@ def build_parser():
 
 
 def main(argv=None):
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    if args.top <= 0:
+        # most_common(0) / most_common(negative) silently return empty
+        # lists, so without this the report just prints bare "top 0 IPs"
+        # headings with nothing under them
+        parser.error("--top must be more than 0")
 
     if args.logfile == "-":
         entries, skipped = parse_stream(sys.stdin)
