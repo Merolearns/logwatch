@@ -48,11 +48,14 @@ def parse_stream(stream):
     """Parse log lines from an already-open text stream (e.g. sys.stdin).
 
     Returns (entries, skipped): parsed entry dicts and the count of
-    malformed/blank lines that were skipped.
+    malformed/blank lines that were skipped. Each entry carries its
+    source "line" number (1-based), so reports that cite a line -- the
+    probe list, for instance -- point at the real line in the file,
+    not at the entry's position after skipped lines were dropped.
     """
     entries = []
     skipped = 0
-    for line in stream:
+    for lineno, line in enumerate(stream, start=1):
         line = line.rstrip("\n")
         if not line.strip():
             continue
@@ -60,6 +63,7 @@ def parse_stream(stream):
         if entry is None:
             skipped += 1
         else:
+            entry["line"] = lineno
             entries.append(entry)
     return entries, skipped
 

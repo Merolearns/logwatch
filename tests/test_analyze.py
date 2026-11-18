@@ -63,6 +63,25 @@ def test_attack_probes_flagged():
     assert any("<script" in d for d in decoded)
 
 
+def test_probe_line_numbers_are_source_lines():
+    # the sample log's two garbage lines sit before the first probe, so a
+    # probe's "line" must be its real line in the file, not its position
+    # among parsed entries
+    import io
+    from parser import parse_stream
+
+    good = (
+        '203.0.113.21 - - [03/Oct/2026:13:02:11 +0000] '
+        '"GET /%2e%2e/etc/passwd HTTP/1.1" 200 12 "-" "curl/8.5.0"'
+    )
+    stream = io.StringIO("garbage line\n\n" + good + "\n")
+    entries, skipped = parse_stream(stream)
+    assert skipped == 1
+    probes = analyze(entries)["probes"]
+    assert len(probes) == 1
+    assert probes[0]["line"] == 3
+
+
 def test_rare_agents():
     agents = {r["agent"] for r in report["rare_agents"]}
     assert any("sqlmap" in a for a in agents)

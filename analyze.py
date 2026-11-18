@@ -125,7 +125,10 @@ def _find_probes(entries):
         decoded = _fully_decode(entry["path"])
         if any(p.search(decoded) for p in PROBE_PATTERNS):
             probes.append({
-                "line": i,
+                # entries parsed from a file carry their real source line;
+                # hand-built entries (tests, other callers) fall back to
+                # the entry's position in the list
+                "line": entry.get("line", i),
                 "ip": entry["ip"],
                 "path": entry["path"],
                 "status": entry["status"],

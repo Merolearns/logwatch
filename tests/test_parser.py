@@ -72,3 +72,17 @@ def test_parse_stream_reads_from_text_stream():
     assert len(entries) == 1
     assert entries[0]["ip"] == "203.0.113.21"
     assert skipped == 1  # blank line is ignored, garbage line is skipped
+
+
+def test_entries_carry_source_line_numbers():
+    import io
+    from parser import parse_stream
+
+    # garbage on line 1, blank on line 2, good lines on 3 and 4 -- the
+    # entries must keep their real line numbers, not 1 and 2
+    stream = io.StringIO(
+        "not a log line\n\n" + GOOD_LINE + "\n" + GOOD_LINE + "\n"
+    )
+    entries, skipped = parse_stream(stream)
+    assert skipped == 1
+    assert [e["line"] for e in entries] == [3, 4]
