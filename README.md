@@ -41,7 +41,9 @@ requests from 10 unique IPs, with 2 malformed lines skipped. It flags
 one scanner — `45.148.10.88` returned 56 404s — and three attack
 probes: a `UNION SELECT` injection attempt, a `../` path traversal
 aimed at `/etc/passwd`, and a `<script>` injection, all on line 24–26
-of the file.
+of the file. Paths are URL-decoded before matching, and a `+` in a
+query string counts as a space, so `1+UNION+SELECT` is caught the
+same as `1 UNION SELECT`.
 
 ## Usage
 

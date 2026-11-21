@@ -192,6 +192,16 @@ def test_single_encoded_traversal_still_flagged():
     assert len(analyze(entries)["probes"]) == 1
 
 
+def test_plus_encoded_union_select_flagged_as_probe():
+    # '+' means a space in a query string, so '1+UNION+SELECT' is the
+    # same injection as '1 UNION SELECT' -- unquote alone leaves the
+    # pluses in place and the pattern never matches
+    entries = [_entry("/search?q=1+UNION+SELECT+1,2,3--")]
+    probes = analyze(entries)["probes"]
+    assert len(probes) == 1
+    assert probes[0]["path"] == "/search?q=1+UNION+SELECT+1,2,3--"
+
+
 def test_plain_path_not_flagged():
     entries = [_entry("/about")]
     assert analyze(entries)["probes"] == []

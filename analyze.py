@@ -4,7 +4,7 @@ import html
 import re
 from collections import Counter
 from datetime import timedelta
-from urllib.parse import unquote
+from urllib.parse import unquote_plus
 
 # An IP returning this many 404s in one file is almost certainly scanning.
 SCANNER_404_THRESHOLD = 50
@@ -108,10 +108,13 @@ def _fully_decode(path):
 
     A single unquote misses double-encoded attacks like
     %252e%252e%252f, which decodes to %2e%2e%2f and only then to ../.
+    unquote_plus (not unquote): in a query string '+' means a space,
+    so '1+UNION+SELECT' is the same attack as '1 UNION SELECT' and
+    must match the same way.
     """
     decoded = path
     for _ in range(3):
-        nxt = unquote(decoded)
+        nxt = unquote_plus(decoded)
         if nxt == decoded:
             return decoded
         decoded = nxt
