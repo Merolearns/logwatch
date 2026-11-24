@@ -125,6 +125,15 @@ def test_just_under_rate_threshold_not_flagged():
     assert analyze(entries)["scanners"] == []
 
 
+def test_rate_only_scanner_message_omits_404_wording():
+    # flagged on rate alone: the report must not claim it returned 0 404s
+    report = analyze(_burst_entries("198.51.100.99", [0], 600))
+    for out in (render_text(report), render_html(report)):
+        assert "198.51.100.99" in out
+        assert "0 404s" not in out
+        assert "burst: 600 requests" in out
+
+
 def test_text_report_mentions_flags():
     text = render_text(report, skipped=2, top_n=10)
     assert "45.148.10.88" in text

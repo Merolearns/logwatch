@@ -204,8 +204,11 @@ def render_text(report, skipped=0, top_n=10):
     scanners = report["scanners"]
     if scanners:
         for s in scanners:
-            line = (f"  [!] {s['ip']} returned {s['requests_404']} 404s "
-                    f"({s['total_requests']} requests total) - possible scan")
+            # an IP flagged on rate alone returned no 404s: don't claim it did
+            line = f"  [!] {s['ip']}"
+            if s["requests_404"] >= SCANNER_404_THRESHOLD:
+                line += (f" returned {s['requests_404']} 404s "
+                         f"({s['total_requests']} requests total) - possible scan")
             if s["peak_requests_per_min"] >= HIGH_RATE_THRESHOLD:
                 line += (f" - burst: {s['peak_requests_per_min']} requests "
                          f"in a single minute")
@@ -302,8 +305,10 @@ def render_html(report, skipped=0, top_n=10):
     if scanners:
         add("<ul>")
         for s in scanners:
-            line = (f"{esc(s['ip'])} returned {s['requests_404']} 404s "
-                    f"({s['total_requests']} requests total) -- possible scan")
+            line = f"{esc(s['ip'])}"
+            if s["requests_404"] >= SCANNER_404_THRESHOLD:
+                line += (f" returned {s['requests_404']} 404s "
+                         f"({s['total_requests']} requests total) -- possible scan")
             if s["peak_requests_per_min"] >= HIGH_RATE_THRESHOLD:
                 line += (f" -- burst: {s['peak_requests_per_min']} requests "
                          f"in a single minute")

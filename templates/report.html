@@ -140,8 +140,11 @@
     <ul class="flags">
       {% for s in report.scanners %}
       <li class="flag">
-        <span class="mono">{{ s.ip }}</span> returned {{ s.requests_404 }} 404s
+        <span class="mono">{{ s.ip }}</span>
+        {% if s.requests_404 >= 50 %}
+        returned {{ s.requests_404 }} 404s
         ({{ s.total_requests }} requests total) &mdash; possible scan
+        {% endif %}
         {% if s.peak_requests_per_min >= 500 %}
         &mdash; burst: {{ s.peak_requests_per_min }} requests in a single minute
         {% endif %}
