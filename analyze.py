@@ -104,16 +104,18 @@ def _find_scanners(entries):
 
 
 def _fully_decode(path):
-    """URL-decode until the result stops changing (capped at 3 passes).
+    """URL-decode until the result stops changing (capped at 5 passes).
 
     A single unquote misses double-encoded attacks like
     %252e%252e%252f, which decodes to %2e%2e%2f and only then to ../.
+    Triple-encoded attacks (%2525252e...) need a fourth pass, so the
+    cap has to clear that -- 5 also covers quadruple-encoded paths.
     unquote_plus (not unquote): in a query string '+' means a space,
     so '1+UNION+SELECT' is the same attack as '1 UNION SELECT' and
     must match the same way.
     """
     decoded = path
-    for _ in range(3):
+    for _ in range(5):
         nxt = unquote_plus(decoded)
         if nxt == decoded:
             return decoded

@@ -196,6 +196,15 @@ def test_double_encoded_traversal_flagged_as_probe():
     assert probes[0]["path"] == "/%252e%252e%252fetc%252fpasswd"
 
 
+def test_triple_encoded_traversal_flagged_as_probe():
+    # %2525252e needs four decode passes to reveal ../ -- the old
+    # 3-pass cap stopped at %2e%2e%2f and the probe went unflagged
+    entries = [_entry("/%2525252e%2525252e%2525252fetc%2525252fpasswd")]
+    probes = analyze(entries)["probes"]
+    assert len(probes) == 1
+    assert probes[0]["path"] == "/%2525252e%2525252e%2525252fetc%2525252fpasswd"
+
+
 def test_single_encoded_traversal_still_flagged():
     entries = [_entry("/%2e%2e/%2e%2e/etc/passwd")]
     assert len(analyze(entries)["probes"]) == 1
